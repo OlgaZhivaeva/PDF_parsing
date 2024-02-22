@@ -18,7 +18,7 @@ class Parameter(Base):
     __tablename__ = "parameter"
     id = sq.Column(sq.Integer, primary_key=True)
     name = sq.Column(sq.String(length=100))
-    length = sq.Column(sq.String(length=40))
+    length = sq.Column(sq.String(length=60))
     scaling = sq.Column(sq.String(length=40))
     range = sq.Column(sq.String(length=40))
     SPN = sq.Column(sq.Integer)

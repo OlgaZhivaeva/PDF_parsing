@@ -3,67 +3,28 @@ from PyPDF2 import PdfReader
 from db_connection import *
 from models import drop_tables, create_tables, CAN_package, Parameter
 
+
 drop_tables(engine)
 create_tables(engine)
-
-def save_to_database(pattern_list, pattern_number, line):
-    if pattern_list == pattern_lists[0]:
-
-        if pattern_number == 1:
-            pattern = r'.*\s*Data Length:\s+(.+)'
-            str = re.sub(pattern, r'\1', line)
-            print(str)
-
-        elif pattern_number == 2:
-            pattern = r'.*\s*Parameter Group\s+(.+)\s+\(\s*(.+)\s*\)'
-            str = re.sub(pattern, r'\1', line)
-            print(str)
-            str = re.sub(pattern, r'\2', line)
-            print(str)
-
-    else:
-        if pattern_number == 0:
-            pattern = r'.*\s*-71\s+5\.2\.\S*\s+(.+)'
-            str = re.sub(pattern, r'\1', line)
-            print(str)
-
-        elif pattern_number == 1:
-            pattern = r'.*\s*Slot Scaling:\s+(.+),.+Offset'
-            str = re.sub(pattern, r'\1', line)
-            print(str)
-
-        elif pattern_number == 2:
-            pattern = r'.*\s*Slot Range:\s+(.+)Operational Range:.*'
-            str = re.sub(pattern, r'\1', line)
-            print(str)
-
-        elif pattern_number == 3:
-            pattern = r'.*\s*SPN:\s+(.+)'
-            str = re.sub(pattern, r'\1', line)
-            print(str)
-            print(line)
-
-        elif pattern_number == 4:
-            print(line)
 
 
 if __name__ == '__main__':
 
-    pdf_document = r'C:\Users\green\Desktop\SAE_J1939-71.pdf'
     pdf_content = PdfReader(pdf_document)
     number_pages = len(pdf_content.pages)
 
     pattern_list_1 = [
-        r'-71 5\.3\..+-.+',
-        r'Data Length:\s+.+',
-        r'Parameter Group\s+.+'
+        r'.*-71 5\.3\..+-.+',
+        r'.*Data Length:\s+(.+)',
+        r'.*Parameter Group\s+(.+)\s+\(\s*(.+)\s*\)'
     ]
 
     pattern_list_2 =[
-        r'.*\s*-71\s+5\.2\.\S*\s+.+',
-        r'.*Slot Scaling:.+',
-        r'.*Slot Range:.+',
-        r'.*SPN:.+|\s*Page\s+\d+\s+of 442 J1939 –71 Database Report April 15, 2001\sSPN:.+',
+        r'.*-71\s+5\.2\.\S*\s+(.+)',
+        r'.*Slot Length:\s+(.+)',
+        r'.*Slot Scaling:\s+(.+),.+Offset',
+        r'.*Slot Range:\s+(.+)Operational Range:.*',
+        r'.*SPN:\s+(.+)',
         r'.*PGN Parameter Group Name and Acronym  Doc. and Paragraph\s+(\d+).*-71\s+5\.3\.\S*\s*|\s*Page\s+\d+\s+of 442 J1939 –71 Database Report April 15, 2001\s*(\d+).*-71\s+5\.3\.\S*\s*'
     ]
 
@@ -72,18 +33,8 @@ if __name__ == '__main__':
         pattern_list_2
     ]
 
-    # list_pages = [33, 34, 44, 45, 46, 47, 48, 49, 339, 440, 441]
-    # for page_number in list_pages:
-    #     page = pdf_content.pages[page_number]
-    #     for line in  page.extract_text().split('\n'):
-    #         print(line)
-    #     print('______________________________________________________________________')
-
-
     for pattern_list in pattern_lists:
         pattern_number = 0
-        #for page_number in range(0, number_pages-1):
-        #for page_number in list_pages:
         for page_number in range(0, number_pages):
             page = pdf_content.pages[page_number]
             split_page =  page.extract_text().split('\n')
@@ -92,33 +43,27 @@ if __name__ == '__main__':
             while line_number < number_lines:
                 line = split_page[line_number]
                 if re.search(pattern_list[pattern_number], line):
-                    save_to_database(pattern_list, pattern_number, line)
-
                     if pattern_list == pattern_lists[0]:
                         if pattern_number == 1:
-                            pattern = r'\s*Data Length:\s+(.+)'
-                            data_length = re.sub(pattern, r'\1', line)
+                            data_length = re.sub(pattern_list[pattern_number], r'\1', line)
                         elif pattern_number == 2:
-                            pattern = r'\s*Parameter Group\s+(.+)\s+\(\s*(.+)\s*\)'
-                            pgn = re.sub(pattern, r'\1', line)
-                            id = re.sub(pattern, r'\2', line)
+                            pgn = re.sub(pattern_list[pattern_number], r'\1', line)
+                            id = re.sub(pattern_list[pattern_number], r'\2', line)
                             can_package = CAN_package(data_length=data_length, PGN=pgn, ID=id)
                             session.add(can_package)
                             session.commit()
                     else:
                         if pattern_number == 0:
-                            pattern = r'.*\s*-71\s+5\.2\.\S*\s+(.+)'
-                            name = re.sub(pattern, r'\1', line)
+                            name = re.sub(pattern_list[pattern_number], r'\1', line)
                         elif pattern_number == 1:
-                            pattern = r'.*\s*Slot Scaling:\s+(.+),.+Offset'
-                            scaling = re.sub(pattern, r'\1', line)
+                            length = re.sub(pattern_list[pattern_number], r'\1', line)
                         elif pattern_number == 2:
-                            pattern = r'.*\s*Slot Range:\s+(.+)Operational Range:.*'
-                            range = re.sub(pattern, r'\1', line)
+                            scaling = re.sub(pattern_list[pattern_number], r'\1', line)
                         elif pattern_number == 3:
-                            pattern = r'.*\s*SPN:\s+(.+)'
-                            spn = re.sub(pattern, r'\1', line)
+                            range = re.sub(pattern_list[pattern_number], r'\1', line)
                         elif pattern_number == 4:
+                            spn = re.sub(pattern_list[pattern_number], r'\1', line)
+                        elif pattern_number == 5:
                             pattern = r'\s*PGN Parameter Group Name and Acronym  Doc. and Paragraph'
                             if re.search(pattern, line):
                                 pattern = r'.*PGN Parameter Group Name and Acronym  Doc. and Paragraph\s+(\d+).*-71\s+5\.3\.\S*\s*'
@@ -126,7 +71,7 @@ if __name__ == '__main__':
                             else:
                                 pattern = r'\s*Page\s+\d+\s+of 442 J1939 –71 Database Report April 15, 2001\s*(\d+).*-71\s+5\.3\.\S*\s*'
                                 id_can = re.sub(pattern, r'\1', line)
-                            parameter = Parameter(name=name, scaling=scaling, range=range, SPN=spn,
+                            parameter = Parameter(name=name, length=length, scaling=scaling, range=range, SPN=spn,
                                                   id_CAN=id_can)
                             session.add(parameter)
                             session.commit()
@@ -135,7 +80,6 @@ if __name__ == '__main__':
                         pattern_number += 1
                     else:
                         pattern_number = 0
-                        print('____________________________________________________________________')
                 line_number += 1
 
 session.close()

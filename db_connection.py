@@ -10,6 +10,7 @@ password = os.getenv("PASSWORD")
 database = os.getenv("DATABASE")
 host = os.getenv("HOST")
 port = os.getenv("PORT")
+pdf_document = os.getenv("PDF")
 
 DSN = f"postgresql://{login}:{password}@{host}:{port}/{database}"
 
