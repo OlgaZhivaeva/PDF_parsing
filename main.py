@@ -2,7 +2,7 @@ import re
 from PyPDF2 import PdfReader
 from db_connection import *
 from models import drop_tables, create_tables, CAN_package, Parameter
-
+from tqdm import tqdm
 
 drop_tables(engine)
 create_tables(engine)
@@ -14,7 +14,7 @@ if __name__ == '__main__':
     number_pages = len(pdf_content.pages)
 
     pattern_list_1 = [
-        r'.*-71 5\.3\..+-.+',
+        r'.*-71\s+5\.3\.\S+\s+(.+)-.+',
         r'.*Data Length:\s+(.+)',
         r'.*Parameter Group\s+(.+)\s+\(\s*(.+)\s*\)'
     ]
@@ -25,7 +25,8 @@ if __name__ == '__main__':
         r'.*Slot Scaling:\s+(.+),.+Offset',
         r'.*Slot Range:\s+(.+)Operational Range:.*',
         r'.*SPN:\s+(.+)',
-        r'.*PGN Parameter Group Name and Acronym  Doc. and Paragraph\s+(\d+).*-71\s+5\.3\.\S*\s*|\s*Page\s+\d+\s+of 442 J1939 –71 Database Report April 15, 2001\s*(\d+).*-71\s+5\.3\.\S*\s*'
+        r'.*PGN Parameter Group Name and Acronym  Doc. and Paragraph\s+(\d+).*-71\s+5\.3\.\S*\s*|/'
+        r'\s*Page\s+\d+\s+/of 442 J1939 –71 Database Report April 15, 2001\s*(\d+).*-71\s+5\.3\.\S*\s*'
     ]
 
     pattern_lists =[
@@ -35,7 +36,7 @@ if __name__ == '__main__':
 
     for pattern_list in pattern_lists:
         pattern_number = 0
-        for page_number in range(0, number_pages):
+        for page_number in tqdm(range(0, number_pages)):
             page = pdf_content.pages[page_number]
             split_page =  page.extract_text().split('\n')
             number_lines = len(split_page)
@@ -64,9 +65,8 @@ if __name__ == '__main__':
                         elif pattern_number == 4:
                             spn = re.sub(pattern_list[pattern_number], r'\1', line)
                         elif pattern_number == 5:
-                            pattern = r'\s*PGN Parameter Group Name and Acronym  Doc. and Paragraph'
+                            pattern = r'.*PGN Parameter Group Name and Acronym  Doc. and Paragraph\s+(\d+).*-71\s+5\.3\.\S*\s*'
                             if re.search(pattern, line):
-                                pattern = r'.*PGN Parameter Group Name and Acronym  Doc. and Paragraph\s+(\d+).*-71\s+5\.3\.\S*\s*'
                                 id_can = re.sub(pattern, r'\1', line)
                             else:
                                 pattern = r'\s*Page\s+\d+\s+of 442 J1939 –71 Database Report April 15, 2001\s*(\d+).*-71\s+5\.3\.\S*\s*'
@@ -75,7 +75,6 @@ if __name__ == '__main__':
                                                   id_CAN=id_can)
                             session.add(parameter)
                             session.commit()
-
                     if pattern_number < len(pattern_list)-1:
                         pattern_number += 1
                     else:
